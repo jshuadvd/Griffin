@@ -283,7 +283,6 @@ class GriffinResidualBlock(nn.Module):
         print(f"RMSNorm output shape: {x.shape}")
         return x + skip2
 
-
 class Griffin(nn.Module):
     """
     Griffin module for performing Griffin Residual Network operations.
@@ -304,6 +303,10 @@ class Griffin(nn.Module):
         heads (int): Number of attention heads.
         filter (int): Filter size for the convolutional layers.
         layers (nn.ModuleList): List of GriffinResidualBlock layers.
+
+    Methods:
+        forward(self, x: Tensor) -> Tensor: Forward pass of the Griffin module.
+        generate(self, inp, generate_length): Generates a sequence of tokens using the Griffin model.
 
     """
 
@@ -377,3 +380,36 @@ class Griffin(nn.Module):
             x = layer(x) + x
         print(f"Griffin forward output shape: {x.shape}")
         return output_head(x, self.num_tokens, self.dim)
+
+    def generate(self, inp, generate_length):
+        # Move the input tensor to the same device as the model
+        inp = inp.to(next(self.parameters()).device)
+
+        # Initialize the generated sequence with the input tensor
+        generated_seq = inp
+
+        # Iterate generate_length times to generate the desired number of tokens
+        for _ in range(generate_length):
+            # Get the last token from the generated sequence
+            last_token = generated_seq[:, -1:]
+
+            # Embed the last token
+            x = self.emb(last_token)
+
+            # Normalize the embedded token
+            x = self.norm(x)
+
+            # Pass the token through the model layers
+            for layer in self.layers:
+                x = layer(x) + x
+
+            # Apply the output head to get the predicted next token
+            next_token_logits = output_head(x, self.num_tokens, self.dim)
+
+            # Sample the next token from the predicted logits
+            next_token = torch.multinomial(next_token_logits[:, -1, :], num_samples=1)
+
+            # Append the predicted next token to the generated sequence
+            generated_seq = torch.cat((generated_seq, next_token), dim=-1)
+
+        return generated_seq
