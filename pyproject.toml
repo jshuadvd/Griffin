@@ -22,10 +22,11 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "~3.11.0"
 swarms = "*"
 zetascale = "*"
 torch = "*"
+tensorflow = "2.12"
 
 [tool.poetry.group.lint.dependencies]
 ruff = "^0.1.6"
@@ -36,6 +37,10 @@ black = "^23.1.0"
 types-chardet = "^5.0.4.6"
 mypy-protobuf = "^3.0.0"
 
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.3"
 
 [tool.autopep8]
 max_line_length = 80

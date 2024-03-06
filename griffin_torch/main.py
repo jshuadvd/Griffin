@@ -1,7 +1,38 @@
+# Description: This file contains the implementation of the Griffin model in PyTorch.
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
-from zeta.nn import FeedForward
+from torch.utils.data import DataLoader, Dataset
+class FeedForward(nn.Module):
+    def __init__(
+        self,
+        dim: int,
+        hidden_dim: int,
+        dropout: float = 0.0,
+        post_act_ln: bool = False,
+        *args,
+        **kwargs,
+    ):
+        super().__init__()
+        self.dim = dim
+        self.hidden_dim = hidden_dim
+        self.dropout = dropout
+        self.post_act_ln = post_act_ln
+
+        # Linear layers
+        self.layers = nn.Sequential(
+            nn.Linear(dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, dim),
+        )
+
+        # Layer normalization
+        if post_act_ln:
+            self.layers.add_module("layer_norm", nn.LayerNorm(dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.layers(x)
 
 
 class RGLRU(nn.Module):
@@ -51,6 +82,7 @@ class RGLRU(nn.Module):
         Returns:
         - y (Tensor): Output tensor with shape (batch_size, sequence_length, hidden_dim)
         """
+        print(f"RGLRU forward input shape: {x.shape}")
         batch_size, sequence_length, _ = x.shape
         ht = torch.zeros(batch_size, self.hidden_dim, device=x.device)
         y = []
@@ -65,6 +97,7 @@ class RGLRU(nn.Module):
             y.append(ht.unsqueeze(1))
 
         y = torch.cat(y, dim=1)
+        print(f"RGLRU forward output shape: {y.shape}")
         return y
 
 
@@ -97,6 +130,7 @@ class RMSNorm(nn.Module):
             torch.Tensor: The normalized output tensor.
 
         """
+        print(f"RMSNorm input shape: {x.shape}")
         return F.normalize(x, dim=-1) * self.scale * self.g
 
 
@@ -164,13 +198,16 @@ class GriffinResidualBlock(nn.Module):
         # Norm
         self.norm = RMSNorm(dim)
 
+         # Define linear layers here
+        self.linear_1_layer = nn.Linear(dim, dim)
+        self.linear_2_layer = nn.Linear(dim, dim)
+
         # Feedforward
         self.mlp = FeedForward(
             dim,
-            dim,
-            mlp_mult,
-            post_act_ln=True,
+            dim * mlp_mult,
             dropout=dropout,
+            post_act_ln=True,
             *args,
             **kwargs,
         )
@@ -192,16 +229,25 @@ class GriffinResidualBlock(nn.Module):
             Tensor: The output tensor.
 
         """
+        print(f"Input shape: {x.shape}")
+        print(f"GriffinResidualBlock forward input shape: {x.shape}")
+
         b, s, d = x.shape
 
         skip = x
 
+
         # Norm
         x = self.norm(x)
+        print(f"After some_layer shape: {x.shape}")
         print(x.shape)
 
         # Temporal Mixing Block
-        linear_1, linear_2 = nn.Linear(d, d)(x), nn.Linear(d, d)(x)
+        # linear_1, linear_2 = nn.Linear(d, d)(x), nn.Linear(d, d)(x)
+         # Use the linear layers
+        linear_1 = self.linear_1_layer(x)
+        linear_2 = self.linear_2_layer(x)
+
         print(linear_1.shape, linear_2.shape)
 
         # Conv1d
@@ -234,7 +280,7 @@ class GriffinResidualBlock(nn.Module):
 
         # Feedforward
         x = self.mlp(x)
-
+        print(f"RMSNorm output shape: {x.shape}")
         return x + skip2
 
 
@@ -319,6 +365,7 @@ class Griffin(nn.Module):
             Tensor: Output tensor.
 
         """
+        print(f"Griffin forward input shape: {x.shape}")
         # Embed the tokens
         x = self.emb(x)
 
@@ -328,5 +375,5 @@ class Griffin(nn.Module):
         # Loop
         for layer in self.layers:
             x = layer(x) + x
-
+        print(f"Griffin forward output shape: {x.shape}")
         return output_head(x, self.num_tokens, self.dim)
