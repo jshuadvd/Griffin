@@ -289,24 +289,33 @@ class Griffin(nn.Module):
 
     Args:
         dim (int): Dimension of the input tensor.
-        depth (int): Number of residual blocks in the network.
-        mlp_mult (int): Multiplier for the hidden dimension of the MLP layers.
+        num_tokens (int): Number of tokens in the vocabulary.
+        seq_len (int): Maximum sequence length.
+        depth (int, optional): Number of residual blocks in the network. Defaults to 8.
+        mlp_mult (int, optional): Multiplier for the hidden dimension of the MLP layers. Defaults to 4.
         dropout (float, optional): Dropout probability. Defaults to 0.1.
         heads (int, optional): Number of attention heads. Defaults to 8.
         filter (int, optional): Filter size for the convolutional layers. Defaults to 4.
 
     Attributes:
         dim (int): Dimension of the input tensor.
+        num_tokens (int): Number of tokens in the vocabulary.
+        seq_len (int): Maximum sequence length.
         depth (int): Number of residual blocks in the network.
         mlp_mult (int): Multiplier for the hidden dimension of the MLP layers.
         dropout (float): Dropout probability.
         heads (int): Number of attention heads.
         filter (int): Filter size for the convolutional layers.
+        max_seq_len (int): Maximum sequence length.
         layers (nn.ModuleList): List of GriffinResidualBlock layers.
+        emb (nn.Embedding): Embedding layer.
+        norm (RMSNorm): RMSNorm layer.
 
     Methods:
-        forward(self, x: Tensor) -> Tensor: Forward pass of the Griffin module.
-        generate(self, inp, generate_length): Generates a sequence of tokens using the Griffin model.
+        forward(x: Tensor) -> Tensor:
+            Perform the forward pass of the Griffin module.
+        generate(inp: Tensor, generate_length: int) -> Tensor:
+            Generate a sequence of tokens based on the input tensor.
 
     """
 
