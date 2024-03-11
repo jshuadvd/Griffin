@@ -163,3 +163,5 @@ cython_debug/
 #.idea/
 
 lightning_logs
+lightning_logs/
+/lightning_logs
